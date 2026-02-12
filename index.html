@@ -51,7 +51,74 @@
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     background-clip: text; line-height: 1.3;
   }
-  .subtitle { font-size: 14px; color: rgba(255,180,200,0.7); margin-bottom: 36px; text-align: center; }
+  .subtitle { font-size: 14px; color: rgba(255,180,200,0.7); margin-bottom: 20px; text-align: center; }
+
+  /* Countdown timer */
+  .timer-wrap {
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  .timer-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,150,170,0.5);
+    margin-bottom: 10px;
+  }
+  .timer {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+  }
+  .timer-block {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,100,130,0.15);
+    border-radius: 14px;
+    padding: 10px 6px;
+    min-width: 58px;
+    text-align: center;
+  }
+  .timer-num {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: 'Quicksand', sans-serif;
+    background: linear-gradient(135deg, #ff8fa3, #ffb3c1);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+  .timer-unit {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,180,200,0.45);
+    margin-top: 4px;
+  }
+  .timer-colon {
+    font-size: 22px;
+    color: rgba(255,150,170,0.3);
+    font-weight: 700;
+    margin-top: -10px;
+  }
+  .timer-expired {
+    font-size: 16px;
+    color: #ff4d6d;
+    font-weight: 600;
+    animation: pulse 1s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.5; }
+  }
+  .timer-urgent .timer-num {
+    background: linear-gradient(135deg, #ff4d6d, #ff1744);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .timer-urgent .timer-block {
+    border-color: rgba(255,50,70,0.3);
+    background: rgba(255,50,70,0.08);
+  }
 
   .btn-yes {
     background: linear-gradient(135deg, #ff4d6d, #c9184a); color: #fff; border: none;
@@ -76,7 +143,6 @@
     left: 50%; bottom: 60px; top: auto;
     transform: translateX(-50%);
   }
-
   .btn-no.moving {
     transform: none;
     bottom: auto;
@@ -120,6 +186,32 @@
     <div class="big-heart">❤️</div>
     <h1 class="question">Will You Be My Valentine?</h1>
     <p class="subtitle">I'd really love it if you said yes…</p>
+
+    <div class="timer-wrap" id="timerWrap">
+      <div class="timer-label">Time left to answer</div>
+      <div class="timer" id="timer">
+        <div class="timer-block">
+          <div class="timer-num" id="days">--</div>
+          <div class="timer-unit">Days</div>
+        </div>
+        <div class="timer-colon">:</div>
+        <div class="timer-block">
+          <div class="timer-num" id="hours">--</div>
+          <div class="timer-unit">Hours</div>
+        </div>
+        <div class="timer-colon">:</div>
+        <div class="timer-block">
+          <div class="timer-num" id="mins">--</div>
+          <div class="timer-unit">Mins</div>
+        </div>
+        <div class="timer-colon">:</div>
+        <div class="timer-block">
+          <div class="timer-num" id="secs">--</div>
+          <div class="timer-unit">Secs</div>
+        </div>
+      </div>
+    </div>
+
     <button class="btn-yes" id="btnYes">Yes! 💕</button>
   </div>
 
@@ -134,6 +226,48 @@
 
 <script>
 (function() {
+  // ---- COUNTDOWN TIMER ----
+  // Feb 14 at midnight (local time)
+  var deadline = new Date('2026-02-14T00:00:00').getTime();
+
+  var daysEl = document.getElementById('days');
+  var hoursEl = document.getElementById('hours');
+  var minsEl = document.getElementById('mins');
+  var secsEl = document.getElementById('secs');
+  var timerEl = document.getElementById('timer');
+  var timerWrap = document.getElementById('timerWrap');
+
+  function pad(n) { return n < 10 ? '0' + n : n; }
+
+  function updateTimer() {
+    var now = Date.now();
+    var diff = deadline - now;
+
+    if (diff <= 0) {
+      timerEl.innerHTML = '<div class="timer-expired">⏰ Time\'s up! Quick, say yes!</div>';
+      return;
+    }
+
+    var d = Math.floor(diff / (1000 * 60 * 60 * 24));
+    var h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    var m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    var s = Math.floor((diff % (1000 * 60)) / 1000);
+
+    daysEl.textContent = pad(d);
+    hoursEl.textContent = pad(h);
+    minsEl.textContent = pad(m);
+    secsEl.textContent = pad(s);
+
+    // Turn red when under 1 hour
+    if (diff < 1000 * 60 * 60) {
+      timerEl.classList.add('timer-urgent');
+    }
+  }
+
+  updateTimer();
+  setInterval(updateTimer, 1000);
+
+  // ---- FLOATING HEARTS ----
   var bg = document.getElementById('heartsBg');
   var emojis = ['💕','❤️','💗','💖','💘','✨','🌹'];
   for (var i = 0; i < 20; i++) {
@@ -147,6 +281,7 @@
     bg.appendChild(el);
   }
 
+  // ---- BUTTONS ----
   var btnYes = document.getElementById('btnYes');
   var btnNo = document.getElementById('btnNo');
   var askScreen = document.getElementById('askScreen');
@@ -166,7 +301,6 @@
   }
 
   function moveNo() {
-    // Switch to absolute positioning mode after first dodge
     btnNo.classList.add('moving');
 
     var screenW = window.innerWidth;
@@ -189,10 +323,8 @@
       newLeft = safeLeft + Math.random() * (maxLeft - safeLeft);
       newTop = safeTop + Math.random() * (maxTop - safeTop);
       noRect = {
-        left: newLeft,
-        top: newTop,
-        right: newLeft + noW,
-        bottom: newTop + noH
+        left: newLeft, top: newTop,
+        right: newLeft + noW, bottom: newTop + noH
       };
       attempts++;
     } while (rectsOverlap(noRect, yesRect, 24) && attempts < 100);
