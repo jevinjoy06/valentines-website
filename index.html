@@ -31,7 +31,7 @@
     max-width: 370px; width: 100%; text-align: center;
     box-shadow: 0 20px 60px rgba(200,50,80,0.15), 0 0 80px rgba(255,100,150,0.05);
     animation: cardIn 0.8s ease-out;
-    min-height: 380px; display: flex; align-items: center; justify-content: center;
+    min-height: 420px; display: flex; align-items: center; justify-content: center;
   }
   @keyframes cardIn {
     from { opacity: 0; transform: translateY(30px) scale(0.95); }
@@ -53,11 +53,21 @@
     background-clip: text; line-height: 1.3;
   }
   .subtitle { font-size: 14px; color: rgba(255,180,200,0.7); margin-bottom: 32px; }
-  .buttons { display: flex; gap: 16px; justify-content: center; align-items: center; min-height: 90px; position: relative; }
+
+  /* Button area - relative container for absolute No button */
+  .buttons-area {
+    position: relative;
+    width: 100%;
+    height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 10px;
+  }
   .btn-yes {
     background: linear-gradient(135deg, #ff4d6d, #c9184a); color: #fff; border: none;
     padding: 14px 40px; font-size: 18px; font-family: 'Quicksand', sans-serif;
-    font-weight: 600; border-radius: 50px; cursor: pointer; transition: all 0.3s ease;
+    font-weight: 600; border-radius: 50px; cursor: pointer; transition: box-shadow 0.3s ease;
     box-shadow: 0 6px 25px rgba(201,24,74,0.4); z-index: 2; position: relative;
   }
   .btn-yes:hover,.btn-yes:active {
@@ -69,9 +79,10 @@
     border: 1px solid rgba(255,255,255,0.15); padding: 14px 32px;
     font-size: 16px; font-family: 'Quicksand', sans-serif; font-weight: 600;
     border-radius: 50px; cursor: pointer;
-    transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+    transition: left 0.3s cubic-bezier(.4,0,.2,1), top 0.3s cubic-bezier(.4,0,.2,1);
     white-space: nowrap; -webkit-tap-highlight-color: transparent;
-    touch-action: none; z-index: 1; position: relative;
+    touch-action: none; z-index: 1;
+    position: absolute;
   }
   .ask-screen { width: 100%; }
   .ask-screen.hide { display: none; }
@@ -86,10 +97,17 @@
     background-clip: text; margin-bottom: 12px;
   }
   .yes-screen p { color: rgba(255,200,210,0.85); font-size: 16px; line-height: 1.6; }
-  .confetti-piece { position: fixed; z-index: 100; pointer-events: none; animation: confettiFall linear forwards; }
+
+  .confetti-piece {
+    position: fixed; top: -20px; z-index: 100; pointer-events: none;
+    animation: confettiFall linear forwards;
+  }
   @keyframes confettiFall {
-    0% { opacity: 1; transform: translateY(-10vh) rotate(0deg); }
-    100% { opacity: 0; transform: translateY(110vh) rotate(720deg); }
+    0% { transform: translateY(0) rotate(0deg) translateX(0); opacity: 1; }
+    25% { transform: translateY(25vh) rotate(180deg) translateX(30px); opacity: 1; }
+    50% { transform: translateY(50vh) rotate(360deg) translateX(-20px); opacity: 0.9; }
+    75% { transform: translateY(75vh) rotate(540deg) translateX(15px); opacity: 0.6; }
+    100% { transform: translateY(105vh) rotate(720deg) translateX(-10px); opacity: 0; }
   }
 </style>
 </head>
@@ -100,7 +118,7 @@
     <div class="big-heart">❤️</div>
     <h1 class="question">Will You Be My Valentine?</h1>
     <p class="subtitle">I'd really love it if you said yes…</p>
-    <div class="buttons">
+    <div class="buttons-area" id="buttonsArea">
       <button class="btn-yes" id="btnYes">Yes! 💕</button>
       <button class="btn-no" id="btnNo">No</button>
     </div>
@@ -113,7 +131,6 @@
 </div>
 <script>
 (function() {
-  // Floating background hearts
   var bg = document.getElementById('heartsBg');
   var emojis = ['💕','❤️','💗','💖','💘','✨','🌹'];
   for (var i = 0; i < 20; i++) {
@@ -132,6 +149,7 @@
   var askScreen = document.getElementById('askScreen');
   var yesScreen = document.getElementById('yesScreen');
   var card = document.getElementById('mainCard');
+  var area = document.getElementById('buttonsArea');
 
   var texts = [
     "No","Are you sure?","Really sure?","Think again!",
@@ -141,21 +159,62 @@
   ];
   var count = 0;
 
-  function moveNo() {
-    var cr = card.getBoundingClientRect();
-    var bw = btnNo.offsetWidth;
-    var rx = cr.width - bw - 32;
-    var ox = (Math.random() - 0.5) * rx;
-    var oy = (Math.random() * 100) - 30;
-    btnNo.style.transform = 'translate(' + ox + 'px,' + oy + 'px)';
-    if (count < texts.length) btnNo.textContent = texts[count];
-    count++;
-    // Yes button grows bigger each time
-    var s = 1 + count * 0.05;
-    btnYes.style.transform = 'scale(' + Math.min(s, 1.4) + ')';
+  // Check if two rectangles overlap (with padding)
+  function rectsOverlap(r1, r2, pad) {
+    return !(r1.right + pad < r2.left || r1.left - pad > r2.right ||
+             r1.bottom + pad < r2.top || r1.top - pad > r2.bottom);
   }
 
-  // Desktop: moves on hover. Mobile: moves on touch
+  function moveNo() {
+    var areaRect = area.getBoundingClientRect();
+    var yesRect = btnYes.getBoundingClientRect();
+    var noW = btnNo.offsetWidth;
+    var noH = btnNo.offsetHeight;
+
+    var maxLeft = areaRect.width - noW - 8;
+    var maxTop = areaRect.height - noH - 8;
+    var padding = 12; // minimum gap between buttons
+
+    var newLeft, newTop, noRect, attempts = 0;
+
+    // Keep trying random positions until we find one that doesn't overlap Yes
+    do {
+      newLeft = 8 + Math.random() * maxLeft;
+      newTop = 8 + Math.random() * maxTop;
+
+      // Calculate where No button would be in screen coords
+      noRect = {
+        left: areaRect.left + newLeft,
+        top: areaRect.top + newTop,
+        right: areaRect.left + newLeft + noW,
+        bottom: areaRect.top + newTop + noH
+      };
+      attempts++;
+    } while (rectsOverlap(noRect, yesRect, padding) && attempts < 50);
+
+    btnNo.style.left = newLeft + 'px';
+    btnNo.style.top = newTop + 'px';
+
+    if (count < texts.length) btnNo.textContent = texts[count];
+    count++;
+  }
+
+  // Set initial position for No button (to the right of Yes)
+  function initNoPosition() {
+    var areaRect = area.getBoundingClientRect();
+    var yesRect = btnYes.getBoundingClientRect();
+    var noW = btnNo.offsetWidth;
+
+    var startLeft = (yesRect.right - areaRect.left) + 16;
+    var startTop = yesRect.top - areaRect.top;
+
+    btnNo.style.left = startLeft + 'px';
+    btnNo.style.top = startTop + 'px';
+  }
+
+  // Wait for fonts to load then position
+  setTimeout(initNoPosition, 100);
+
   btnNo.addEventListener('mouseenter', moveNo);
   btnNo.addEventListener('touchstart', function(e) {
     e.preventDefault(); moveNo();
@@ -164,27 +223,27 @@
     e.preventDefault(); moveNo();
   });
 
-  // Yes button triggers celebration
   btnYes.addEventListener('click', function() {
     askScreen.classList.add('hide');
     yesScreen.classList.add('show');
+
     var colors = ['#ff4d6d','#ffb3c1','#ff8fa3','#ff758f','#c9184a','#fff','#ffd700'];
-    var shapes = ['●','■','▲','❤','✦'];
-    for (var j = 0; j < 60; j++) {
+    var shapes = ['●','■','▲','❤','✦','💕','💖'];
+    for (var j = 0; j < 80; j++) {
       var p = document.createElement('div');
       p.className = 'confetti-piece';
       p.textContent = shapes[Math.floor(Math.random() * shapes.length)];
       p.style.left = Math.random() * 100 + 'vw';
       p.style.color = colors[Math.floor(Math.random() * colors.length)];
-      p.style.fontSize = (10 + Math.random() * 16) + 'px';
-      p.style.animationDuration = (2 + Math.random() * 3) + 's';
-      p.style.animationDelay = (Math.random() * 1.5) + 's';
+      p.style.fontSize = (10 + Math.random() * 18) + 'px';
+      p.style.animationDuration = (2.5 + Math.random() * 3) + 's';
+      p.style.animationDelay = (Math.random() * 2) + 's';
       document.body.appendChild(p);
-      (function(el) { setTimeout(function() { el.remove(); }, 5000); })(p);
+      (function(el) { setTimeout(function() { el.remove(); }, 6000); })(p);
     }
   });
 })();
 </script>
 </body>
-
 </html>
+
